@@ -13,6 +13,7 @@ import {
   RefreshCcw,
   RotateCcw,
   Settings2,
+  ShieldCheck,
   Target,
   TimerReset,
   Trash2,
@@ -30,7 +31,7 @@ import {
   parseIsoDate,
   toIsoDate
 } from "@/lib/date";
-import { useThumbTrack } from "@/lib/use-thumbtrack";
+import { useThumbTrack, type SetDraft } from "@/lib/use-thumbtrack";
 import type { DayPart, DayRecord, IsoDate, SetEntry, Stats, SyncState } from "@/lib/types";
 
 const dayPartLabels: Record<DayPart, string> = {
@@ -40,11 +41,6 @@ const dayPartLabels: Record<DayPart, string> = {
 };
 
 const dayParts = Object.keys(dayPartLabels) as DayPart[];
-
-type SetDetails = {
-  name: string;
-  dayPart: DayPart;
-};
 
 function IconButton({
   label,
@@ -61,6 +57,66 @@ function IconButton({
     <button className="icon-button" type="button" onClick={onClick} disabled={disabled} title={label} aria-label={label}>
       {children}
     </button>
+  );
+}
+
+function AuthPanel({
+  hasSupabase,
+  userEmail,
+  message,
+  onSignIn,
+  onSignOut
+}: {
+  hasSupabase: boolean;
+  userEmail: string | null;
+  message: string | null;
+  onSignIn: (email: string) => Promise<void>;
+  onSignOut: () => Promise<void>;
+}) {
+  const [email, setEmail] = useState("");
+
+  if (!hasSupabase) {
+    return (
+      <section className="auth-panel">
+        <ShieldCheck size={18} />
+        <span>Add Supabase env vars in Vercel to sync across your laptop and phone.</span>
+      </section>
+    );
+  }
+
+  if (userEmail) {
+    return (
+      <section className="auth-panel synced-auth">
+        <ShieldCheck size={18} />
+        <span>Syncing as {userEmail}</span>
+        <button type="button" onClick={() => void onSignOut()}>
+          Sign out
+        </button>
+      </section>
+    );
+  }
+
+  return (
+    <form
+      className="auth-panel auth-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void onSignIn(email);
+      }}
+    >
+      <ShieldCheck size={18} />
+      <label htmlFor="sync-email">Sync on phone</label>
+      <input
+        id="sync-email"
+        inputMode="email"
+        placeholder="email@example.com"
+        type="email"
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+      />
+      <button type="submit">Send link</button>
+      {message ? <small>{message}</small> : null}
+    </form>
   );
 }
 
@@ -203,29 +259,45 @@ function GoalSettings({
   );
 }
 
-function SetDetailsPanel({
+function AddSetPanel({
   value,
-  onChange
+  onChange,
+  onAdd
 }: {
-  value: SetDetails;
-  onChange: (value: SetDetails) => void;
+  value: SetDraft;
+  onChange: (value: SetDraft) => void;
+  onAdd: () => void;
 }) {
   return (
-    <section className="panel set-details-panel" aria-label="Next set details">
+    <section className="panel set-details-panel" aria-label="Create a set">
       <div className="panel-title">
         <ClipboardCheck size={18} />
-        <h2>Next Set</h2>
+        <h2>Create Set</h2>
       </div>
       <div className="setting-row">
-        <label htmlFor="set-name">Name</label>
+        <label htmlFor="new-set-name">Name</label>
         <input
           className="text-input"
-          id="set-name"
+          id="new-set-name"
           maxLength={64}
           placeholder="Warmup, left hand, final pull..."
           type="text"
           value={value.name}
           onChange={(event) => onChange({ ...value, name: event.target.value })}
+        />
+      </div>
+      <div className="setting-row">
+        <label htmlFor="new-set-duration">Duration</label>
+        <input
+          className="text-input"
+          id="new-set-duration"
+          inputMode="numeric"
+          min={10}
+          max={600}
+          step={5}
+          type="number"
+          value={value.durationSeconds}
+          onChange={(event) => onChange({ ...value, durationSeconds: Number(event.target.value) })}
         />
       </div>
       <div className="setting-row">
@@ -243,24 +315,29 @@ function SetDetailsPanel({
           ))}
         </div>
       </div>
+      <button className="action-button complete wide-action" type="button" onClick={onAdd}>
+        <Plus size={18} />
+        <span>Add set</span>
+      </button>
     </section>
   );
 }
 
 function SetTimer({
-  duration,
+  activeSet,
   onComplete
 }: {
-  duration: number;
-  onComplete: (durationSeconds: number) => Promise<void>;
+  activeSet: SetEntry | null;
+  onComplete: (setId: string) => Promise<void>;
 }) {
+  const duration = activeSet?.duration_seconds ?? 60;
   const [remaining, setRemaining] = useState(duration);
   const [running, setRunning] = useState(false);
 
   useEffect(() => {
     setRemaining(duration);
     setRunning(false);
-  }, [duration]);
+  }, [activeSet?.id, duration]);
 
   useEffect(() => {
     if (!running) {
@@ -286,8 +363,12 @@ function SetTimer({
   const minutes = Math.floor(remaining / 60);
   const seconds = String(remaining % 60).padStart(2, "0");
   const complete = async () => {
+    if (!activeSet) {
+      return;
+    }
+
     setRunning(false);
-    await onComplete(Math.max(1, duration - remaining || duration));
+    await onComplete(activeSet.id);
     setRemaining(duration);
   };
 
@@ -296,21 +377,21 @@ function SetTimer({
       <div className="panel-title">
         <TimerReset size={18} />
         <h2>Set Timer</h2>
-        <span className="panel-meta">{duration}s set</span>
+        <span className="panel-meta">{activeSet ? activeSet.set_name || `Set ${activeSet.position}` : "No set"}</span>
       </div>
       <div className="timer-face" style={{ "--progress": `${progress}%` } as CSSProperties}>
         <span>{minutes}:{seconds}</span>
         <small>{progress}%</small>
       </div>
       <div className="timer-actions">
-        <button className="action-button primary" type="button" onClick={() => setRunning((value) => !value)}>
+        <button className="action-button primary" type="button" onClick={() => setRunning((value) => !value)} disabled={!activeSet}>
           {running ? <CirclePause size={18} /> : <CirclePlay size={18} />}
           <span>{running ? "Pause" : "Start"}</span>
         </button>
         <IconButton label="Reset timer" onClick={() => setRemaining(duration)}>
           <RotateCcw size={18} />
         </IconButton>
-        <button className="action-button complete" type="button" onClick={complete}>
+        <button className="action-button complete" type="button" onClick={complete} disabled={!activeSet || Boolean(activeSet.completed_at)}>
           <ClipboardCheck size={18} />
           <span>Complete</span>
         </button>
@@ -334,12 +415,19 @@ function TimeOverview({ entries }: { entries: SetEntry[] }) {
 
 function SetChecklist({
   day,
-  onToggle
+  activeSetId,
+  onSelectTimer,
+  onToggle,
+  onUpdate,
+  onDelete
 }: {
   day: DayRecord;
-  onToggle: (position: number) => void;
+  activeSetId: string | null;
+  onSelectTimer: (setId: string) => void;
+  onToggle: (setId: string) => void;
+  onUpdate: (setId: string, updates: Partial<Pick<SetEntry, "set_name" | "day_part" | "duration_seconds">>) => void;
+  onDelete: (setId: string) => void;
 }) {
-  const positions = Array.from({ length: day.targetSets }, (_, index) => index + 1);
   const completed = day.completedSets.length;
 
   return (
@@ -353,24 +441,73 @@ function SetChecklist({
       </div>
       <TimeOverview entries={day.completedSets} />
       <div className="set-list">
-        {positions.map((position) => {
-          const entry = day.completedSets.find((completedSet) => completedSet.position === position);
-          const checked = Boolean(entry);
+        {day.sets.map((entry) => {
+          const checked = Boolean(entry.completed_at);
           return (
-            <button
-              className={`set-check ${checked ? "done" : ""}`}
-              key={position}
-              type="button"
-              onClick={() => onToggle(position)}
-              aria-pressed={checked}
-            >
-              <span className="checkmark">{checked ? <Check size={16} /> : position}</span>
-              <span className="set-copy">
-                <strong>{entry?.set_name || `Set ${position}`}</strong>
-                <small>{checked && entry ? `${dayPartLabels[entry.day_part]} complete` : "Open"}</small>
-              </span>
-              {checked ? <Trash2 className="set-remove-icon" size={16} aria-hidden="true" /> : null}
-            </button>
+            <article className={`set-card ${checked ? "done" : ""} ${activeSetId === entry.id ? "active" : ""}`} key={entry.id}>
+              <div className="set-card-top">
+                <button
+                  className={`checkmark ${checked ? "done" : ""}`}
+                  type="button"
+                  onClick={() => onToggle(entry.id)}
+                  aria-label={checked ? "Mark set open" : "Mark set complete"}
+                  aria-pressed={checked}
+                >
+                  {checked ? <Check size={16} /> : entry.position}
+                </button>
+                <div className="set-copy">
+                  <input
+                    aria-label={`Set ${entry.position} name`}
+                    className="set-name-input"
+                    maxLength={64}
+                    value={entry.set_name}
+                    onChange={(event) => onUpdate(entry.id, { set_name: event.target.value })}
+                  />
+                  <small>{checked ? `${dayPartLabels[entry.day_part]} complete` : `${dayPartLabels[entry.day_part]} planned`}</small>
+                </div>
+                <IconButton
+                  label={`Remove ${entry.set_name || `Set ${entry.position}`}`}
+                  onClick={() => onDelete(entry.id)}
+                  disabled={day.sets.length <= 1}
+                >
+                  <Trash2 size={16} />
+                </IconButton>
+              </div>
+              <div className="set-edit-row">
+                <input
+                  aria-label={`${entry.set_name} duration in seconds`}
+                  className="set-duration-input"
+                  inputMode="numeric"
+                  min={10}
+                  max={600}
+                  step={5}
+                  type="number"
+                  value={entry.duration_seconds}
+                  onChange={(event) => onUpdate(entry.id, { duration_seconds: Number(event.target.value) })}
+                />
+                <button
+                  aria-label={`Use timer for ${entry.set_name || `Set ${entry.position}`}`}
+                  className="timer-select"
+                  type="button"
+                  onClick={() => onSelectTimer(entry.id)}
+                >
+                  <TimerReset size={15} />
+                  <span>Timer</span>
+                </button>
+              </div>
+              <div className="daypart-row compact" aria-label={`${entry.set_name} time of day`}>
+                {dayParts.map((part) => (
+                  <button
+                    className={`daypart-button ${entry.day_part === part ? "active" : ""}`}
+                    key={part}
+                    type="button"
+                    onClick={() => onUpdate(entry.id, { day_part: part })}
+                  >
+                    {dayPartLabels[part]}
+                  </button>
+                ))}
+              </div>
+            </article>
           );
         })}
       </div>
@@ -384,6 +521,9 @@ function Dashboard({
   stats,
   onGoalChange,
   onDurationChange,
+  onAddSet,
+  onUpdateSet,
+  onDeleteSet,
   onToggleSet,
   onCompleteSet
 }: {
@@ -392,18 +532,34 @@ function Dashboard({
   stats: Stats;
   onGoalChange: (value: number) => void;
   onDurationChange: (value: number) => void;
-  onToggleSet: (position: number, details: SetDetails) => void;
-  onCompleteSet: (durationSeconds: number, details: SetDetails) => Promise<void>;
+  onAddSet: (draft: SetDraft) => Promise<void>;
+  onUpdateSet: (setId: string, updates: Partial<Pick<SetEntry, "set_name" | "day_part" | "duration_seconds">>) => void;
+  onDeleteSet: (setId: string) => void;
+  onToggleSet: (setId: string) => void;
+  onCompleteSet: (setId: string) => Promise<void>;
 }) {
-  const [nextSetDetails, setNextSetDetails] = useState<SetDetails>({ name: "", dayPart: "morning" });
+  const [draft, setDraft] = useState<SetDraft>({ name: "", dayPart: "morning", durationSeconds: profile.set_duration_seconds });
+  const [activeSetId, setActiveSetId] = useState<string | null>(null);
   const percent = Math.min(100, Math.round((today.completedSets.length / Math.max(1, today.targetSets)) * 100));
-  const completeSet = async (durationSeconds: number) => {
-    await onCompleteSet(durationSeconds, nextSetDetails);
-    setNextSetDetails({ ...nextSetDetails, name: "" });
-  };
-  const toggleSet = (position: number) => {
-    onToggleSet(position, nextSetDetails);
-    setNextSetDetails({ ...nextSetDetails, name: "" });
+  const activeSet =
+    today.sets.find((entry) => entry.id === activeSetId) ??
+    today.sets.find((entry) => !entry.completed_at) ??
+    today.sets[0] ??
+    null;
+
+  useEffect(() => {
+    if (!activeSetId && activeSet) {
+      setActiveSetId(activeSet.id);
+    }
+  }, [activeSet, activeSetId]);
+
+  useEffect(() => {
+    setDraft((current) => ({ ...current, durationSeconds: profile.set_duration_seconds }));
+  }, [profile.set_duration_seconds]);
+
+  const addSet = async () => {
+    await onAddSet(draft);
+    setDraft({ ...draft, name: "" });
   };
 
   return (
@@ -433,11 +589,18 @@ function Dashboard({
           onGoalChange={onGoalChange}
           onDurationChange={onDurationChange}
         />
-        <SetDetailsPanel value={nextSetDetails} onChange={setNextSetDetails} />
-        <SetTimer duration={profile.set_duration_seconds} onComplete={completeSet} />
+        <AddSetPanel value={draft} onChange={setDraft} onAdd={addSet} />
+        <SetTimer activeSet={activeSet} onComplete={onCompleteSet} />
       </div>
 
-      <SetChecklist day={today} onToggle={toggleSet} />
+      <SetChecklist
+        day={today}
+        activeSetId={activeSet?.id ?? null}
+        onSelectTimer={setActiveSetId}
+        onToggle={onToggleSet}
+        onUpdate={onUpdateSet}
+        onDelete={onDeleteSet}
+      />
     </div>
   );
 }
@@ -535,11 +698,12 @@ function DayDetail({
                 {entries.map((entry) => (
                   <div className="completed-row" key={entry.id}>
                     <span>{entry.set_name || `Set ${entry.position}`}</span>
-                    <time dateTime={entry.completed_at}>
+                    <small>{entry.duration_seconds}s</small>
+                    <time dateTime={entry.completed_at ?? undefined}>
                       {new Intl.DateTimeFormat("en", {
                         hour: "numeric",
                         minute: "2-digit"
-                      }).format(new Date(entry.completed_at))}
+                      }).format(new Date(entry.completed_at ?? entry.created_at))}
                     </time>
                   </div>
                 ))}
@@ -572,6 +736,14 @@ export function ThumbTrackApp() {
 
       {thumbTrack.error ? <div className="error-banner">{thumbTrack.error}</div> : null}
 
+      <AuthPanel
+        hasSupabase={thumbTrack.hasSupabase}
+        userEmail={thumbTrack.userEmail}
+        message={thumbTrack.authMessage}
+        onSignIn={thumbTrack.signInWithEmail}
+        onSignOut={thumbTrack.signOut}
+      />
+
       <nav className="view-tabs" aria-label="ThumbTrack sections">
         <button
           className={`tab-button ${activeTab === "today" ? "active" : ""}`}
@@ -598,8 +770,11 @@ export function ThumbTrackApp() {
           stats={thumbTrack.stats}
           onGoalChange={thumbTrack.updateGoal}
           onDurationChange={thumbTrack.updateDuration}
-          onToggleSet={(position, details) => void thumbTrack.toggleSet(position, undefined, details)}
-          onCompleteSet={thumbTrack.completeNextSet}
+          onAddSet={thumbTrack.addSet}
+          onUpdateSet={(setId, updates) => void thumbTrack.updateSet(setId, updates)}
+          onDeleteSet={(setId) => void thumbTrack.deleteSet(setId)}
+          onToggleSet={(setId) => void thumbTrack.toggleSet(setId)}
+          onCompleteSet={thumbTrack.completeSet}
         />
       ) : (
         <div className="calendar-view-grid">

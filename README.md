@@ -7,7 +7,7 @@ ThumbTrack is a mobile-first Next.js app for tracking daily thumb-pulling sets. 
 - Next.js 16 with the App Router
 - TypeScript
 - Supabase Auth and Postgres
-- Supabase anonymous sign-ins for a no-friction MVP
+- Supabase email sign-in for cross-device sync
 - Plain CSS with responsive layouts
 
 ## Folder Structure
@@ -38,7 +38,7 @@ ThumbTrack is a mobile-first Next.js app for tracking daily thumb-pulling sets. 
 ## Supabase Setup
 
 1. Create a Supabase project at [database.new](https://database.new).
-2. Open **Authentication > Sign In / Providers** and enable **Anonymous sign-ins**.
+2. Open **Authentication > Sign In / Providers** and enable **Email** sign-ins.
 3. Open the Supabase SQL editor and run [`supabase/schema.sql`](./supabase/schema.sql).
 4. Open the project **Connect** dialog or **Settings > API Keys**.
 5. Copy the project URL and a publishable key.
@@ -53,7 +53,9 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_your_key_here
 ```
 
-The schema enables RLS on every public table and grants the current `authenticated` role the table privileges needed for Supabase's Data API. Rows are scoped to `auth.uid()`, so each anonymous user can only read and mutate their own habit data.
+The schema enables RLS on every public table and grants the current `authenticated` role the table privileges needed for Supabase's Data API. Rows are scoped to `auth.uid()`, so signing in with the same email on laptop and phone loads the same habit data.
+
+For Vercel, also set the Supabase Auth site URL to your deployed URL under **Authentication > URL Configuration**. Add `http://localhost:3000` as a redirect URL for local development.
 
 ## Local Development
 
@@ -72,7 +74,7 @@ npm run lint
 npm run build
 ```
 
-If `.env.local` is missing, ThumbTrack runs in local preview mode with `localStorage`; Supabase persistence turns on automatically once the environment variables and schema are in place.
+If `.env.local` is missing, ThumbTrack runs in local preview mode with `localStorage`; Supabase persistence turns on automatically once the environment variables and schema are in place. To sync across devices, use the email sign-in panel and open the sign-in link on each device.
 
 ## GitHub Setup
 

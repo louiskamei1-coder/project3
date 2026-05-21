@@ -27,7 +27,7 @@ create table if not exists public.set_entries (
   set_name text not null default '',
   day_part text not null default 'morning' check (day_part in ('morning', 'midday', 'night')),
   duration_seconds integer not null check (duration_seconds between 1 and 3600),
-  completed_at timestamptz not null default now(),
+  completed_at timestamptz,
   created_at timestamptz not null default now(),
   unique (user_id, log_date, position),
   foreign key (user_id, log_date)
@@ -46,6 +46,10 @@ alter table public.daily_logs
 alter table public.set_entries
   add column if not exists set_name text not null default '',
   add column if not exists day_part text not null default 'morning';
+
+alter table public.set_entries
+  alter column completed_at drop not null,
+  alter column completed_at drop default;
 
 alter table public.set_entries
   drop constraint if exists set_entries_day_part_check,

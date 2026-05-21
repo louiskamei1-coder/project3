@@ -18,6 +18,7 @@ const defaultState: LocalState = {
       date: todayIso(),
       targetSets: 4,
       notes: "",
+      sets: [],
       completedSets: []
     }
   ]
@@ -39,7 +40,10 @@ export function loadLocalState(): LocalState {
       profile: parsed.profile,
       days: parsed.days.map((day) => ({
         ...day,
-        completedSets: day.completedSets.map((entry) => normalizeSetEntry(entry))
+        sets: (day.sets ?? day.completedSets ?? []).map((entry) => normalizeSetEntry(entry)),
+        completedSets: (day.sets ?? day.completedSets ?? [])
+          .map((entry) => normalizeSetEntry(entry))
+          .filter((entry) => Boolean(entry.completed_at))
       }))
     };
   } catch {
@@ -64,7 +68,8 @@ export function createLocalSetEntry(
   position: number,
   duration: number,
   setName: string,
-  dayPart: DayPart
+  dayPart: DayPart,
+  completedAt: string | null = null
 ): SetEntry {
   const now = new Date().toISOString();
 
@@ -76,7 +81,7 @@ export function createLocalSetEntry(
     set_name: setName || `Set ${position}`,
     day_part: dayPart,
     duration_seconds: duration,
-    completed_at: now,
+    completed_at: completedAt,
     created_at: now
   };
 }

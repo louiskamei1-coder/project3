@@ -109,6 +109,63 @@ button {
   padding: 12px 14px;
 }
 
+.auth-panel {
+  display: flex;
+  min-height: 54px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  border: 1px solid #bad8c9;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: var(--shadow-soft);
+  color: var(--muted);
+  padding: 10px 12px;
+}
+
+.auth-panel svg {
+  flex: 0 0 auto;
+  color: var(--green);
+}
+
+.auth-panel span,
+.auth-panel label {
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.auth-panel input {
+  min-width: 0;
+  flex: 1;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0 10px;
+}
+
+.auth-panel button {
+  min-height: 38px;
+  border: 1px solid #bad8c9;
+  border-radius: 10px;
+  background: var(--green-soft);
+  color: var(--green);
+  cursor: pointer;
+  font-weight: 850;
+  padding: 0 12px;
+}
+
+.auth-panel small {
+  flex-basis: 100%;
+  color: var(--green);
+  font-weight: 750;
+}
+
+.auth-form {
+  flex-wrap: wrap;
+}
+
 .dashboard-stack {
   display: grid;
   align-content: start;
@@ -569,6 +626,11 @@ button {
   flex-wrap: wrap;
 }
 
+.wide-action {
+  width: 100%;
+  margin-top: 16px;
+}
+
 .time-overview {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -596,30 +658,40 @@ button {
 
 .set-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 10px;
   margin-top: 16px;
 }
 
-.set-check {
-  display: flex;
-  min-height: 68px;
-  align-items: center;
+.set-card {
+  display: grid;
   gap: 10px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface);
   color: var(--ink);
-  cursor: pointer;
-  padding: 10px;
+  padding: 12px;
   text-align: left;
 }
 
-.set-check.done {
+.set-card.done {
   border-color: #b6d8c7;
   background:
     linear-gradient(135deg, rgba(217, 238, 229, 0.96), rgba(255, 255, 255, 0.7)),
     var(--green-soft);
+}
+
+.set-card.active {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.set-card-top,
+.set-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
 .checkmark {
@@ -631,11 +703,12 @@ button {
   border-radius: 50%;
   background: #ede8dd;
   color: var(--muted);
+  cursor: pointer;
   font-size: 0.85rem;
   font-weight: 800;
 }
 
-.set-check.done .checkmark {
+.checkmark.done {
   background: var(--green);
   color: #ffffff;
 }
@@ -650,6 +723,28 @@ button {
   font-size: 0.98rem;
 }
 
+.set-name-input,
+.set-duration-input {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--ink);
+  font-weight: 850;
+}
+
+.set-name-input {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 10px;
+}
+
+.set-duration-input {
+  width: 86px;
+  min-height: 38px;
+  text-align: center;
+}
+
 .set-copy small {
   color: var(--muted);
   font-size: 0.76rem;
@@ -659,6 +754,30 @@ button {
 .set-remove-icon {
   margin-left: auto;
   color: var(--coral);
+}
+
+.timer-select {
+  display: inline-flex;
+  min-height: 38px;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #c9d9ef;
+  border-radius: 9px;
+  background: var(--blue-soft);
+  color: var(--blue);
+  cursor: pointer;
+  font-weight: 850;
+}
+
+.daypart-row.compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.daypart-row.compact .daypart-button {
+  min-height: 36px;
+  font-size: 0.8rem;
 }
 
 .calendar-panel {
@@ -776,6 +895,11 @@ button {
   font-weight: 800;
 }
 
+.completed-row small {
+  color: var(--blue);
+  font-weight: 850;
+}
+
 .completed-row time {
   color: var(--muted);
   font-size: 0.86rem;
@@ -818,7 +942,7 @@ button:focus-visible {
   }
 
   .set-list {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -862,5 +986,14 @@ button:focus-visible {
 
   .action-button {
     flex: 1 1 120px;
+  }
+
+  .auth-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .auth-panel button {
+    width: 100%;
   }
 }

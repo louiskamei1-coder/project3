@@ -27,7 +27,7 @@ export type SetEntry = {
   set_name: string;
   day_part: DayPart;
   duration_seconds: number;
-  completed_at: string;
+  completed_at: string | null;
   created_at: string;
 };
 
@@ -35,6 +35,7 @@ export type DayRecord = {
   date: IsoDate;
   targetSets: number;
   notes: string;
+  sets: SetEntry[];
   completedSets: SetEntry[];
 };
 
@@ -94,14 +95,15 @@ export type Database = {
           set_name?: string;
           day_part?: DayPart;
           duration_seconds: number;
-          completed_at?: string;
+          completed_at?: string | null;
           created_at?: string;
         };
         Update: {
+          position?: number;
           set_name?: string;
           day_part?: DayPart;
           duration_seconds?: number;
-          completed_at?: string;
+          completed_at?: string | null;
         };
         Relationships: [];
       };
