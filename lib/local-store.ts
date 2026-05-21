@@ -1,5 +1,5 @@
 import { todayIso } from "@/lib/date";
-import type { DayRecord, HabitProfile, IsoDate, SetEntry } from "@/lib/types";
+import type { DayPart, DayRecord, HabitProfile, IsoDate, SetEntry } from "@/lib/types";
 
 type LocalState = {
   profile: Pick<HabitProfile, "daily_goal" | "set_duration_seconds">;
@@ -34,7 +34,14 @@ export function loadLocalState(): LocalState {
   }
 
   try {
-    return JSON.parse(raw) as LocalState;
+    const parsed = JSON.parse(raw) as LocalState;
+    return {
+      profile: parsed.profile,
+      days: parsed.days.map((day) => ({
+        ...day,
+        completedSets: day.completedSets.map((entry) => normalizeSetEntry(entry))
+      }))
+    };
   } catch {
     return defaultState;
   }
@@ -44,7 +51,21 @@ export function saveLocalState(state: LocalState): void {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-export function createLocalSetEntry(date: IsoDate, position: number, duration: number): SetEntry {
+export function normalizeSetEntry(entry: SetEntry): SetEntry {
+  return {
+    ...entry,
+    set_name: entry.set_name || `Set ${entry.position}`,
+    day_part: entry.day_part || "morning"
+  };
+}
+
+export function createLocalSetEntry(
+  date: IsoDate,
+  position: number,
+  duration: number,
+  setName: string,
+  dayPart: DayPart
+): SetEntry {
   const now = new Date().toISOString();
 
   return {
@@ -52,6 +73,8 @@ export function createLocalSetEntry(date: IsoDate, position: number, duration: n
     user_id: "local",
     log_date: date,
     position,
+    set_name: setName || `Set ${position}`,
+    day_part: dayPart,
     duration_seconds: duration,
     completed_at: now,
     created_at: now

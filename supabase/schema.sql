@@ -2,7 +2,7 @@ create extension if not exists pgcrypto;
 
 create table if not exists public.habit_profiles (
   user_id uuid primary key references auth.users (id) on delete cascade,
-  daily_goal integer not null default 4 check (daily_goal between 1 and 12),
+  daily_goal integer not null default 4 check (daily_goal between 1 and 48),
   set_duration_seconds integer not null default 60 check (set_duration_seconds between 10 and 600),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -12,7 +12,7 @@ create table if not exists public.daily_logs (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
   log_date date not null,
-  target_sets integer not null default 4 check (target_sets between 1 and 12),
+  target_sets integer not null default 4 check (target_sets between 1 and 48),
   notes text not null default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -24,6 +24,8 @@ create table if not exists public.set_entries (
   user_id uuid not null references auth.users (id) on delete cascade,
   log_date date not null,
   position integer not null check (position > 0),
+  set_name text not null default '',
+  day_part text not null default 'morning' check (day_part in ('morning', 'midday', 'night')),
   duration_seconds integer not null check (duration_seconds between 1 and 3600),
   completed_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
@@ -32,6 +34,22 @@ create table if not exists public.set_entries (
     references public.daily_logs (user_id, log_date)
     on delete cascade
 );
+
+alter table public.habit_profiles
+  drop constraint if exists habit_profiles_daily_goal_check,
+  add constraint habit_profiles_daily_goal_check check (daily_goal between 1 and 48);
+
+alter table public.daily_logs
+  drop constraint if exists daily_logs_target_sets_check,
+  add constraint daily_logs_target_sets_check check (target_sets between 1 and 48);
+
+alter table public.set_entries
+  add column if not exists set_name text not null default '',
+  add column if not exists day_part text not null default 'morning';
+
+alter table public.set_entries
+  drop constraint if exists set_entries_day_part_check,
+  add constraint set_entries_day_part_check check (day_part in ('morning', 'midday', 'night'));
 
 create index if not exists daily_logs_user_date_idx
   on public.daily_logs (user_id, log_date desc);

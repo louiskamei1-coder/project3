@@ -2,14 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { clampDuration, clampGoal, getCompletionRate, getStreak, todayIso } from "@/lib/date";
-import { createLocalSetEntry, loadLocalState, saveLocalState } from "@/lib/local-store";
+import { createLocalSetEntry, loadLocalState, normalizeSetEntry, saveLocalState } from "@/lib/local-store";
 import { getSupabaseClient } from "@/lib/supabase";
-import type { DayRecord, HabitProfile, IsoDate, Stats, SyncState } from "@/lib/types";
+import type { DayPart, DayRecord, HabitProfile, IsoDate, Stats, SyncState } from "@/lib/types";
 
 const DEFAULT_GOAL = 4;
 const DEFAULT_DURATION = 60;
 
 type ProfileSettings = Pick<HabitProfile, "daily_goal" | "set_duration_seconds">;
+type SetDetails = {
+  name: string;
+  dayPart: DayPart;
+};
 
 function emptyDay(date: IsoDate, targetSets: number): DayRecord {
   return {
@@ -179,7 +183,7 @@ export function useThumbTrack() {
       date: log.log_date,
       targetSets: log.target_sets,
       notes: log.notes ?? "",
-      completedSets: entries.filter((entry) => entry.log_date === log.log_date)
+      completedSets: entries.filter((entry) => entry.log_date === log.log_date).map((entry) => normalizeSetEntry(entry))
     }));
 
     const hasToday = nextDays.some((day) => day.date === today);
@@ -274,11 +278,13 @@ export function useThumbTrack() {
   );
 
   const toggleSet = useCallback(
-    async (position: number, durationSeconds = profile.set_duration_seconds) => {
+    async (position: number, durationSeconds = profile.set_duration_seconds, details?: SetDetails) => {
       const existing = todayRecord.completedSets.find((entry) => entry.position === position);
+      const setName = details?.name.trim() || `Set ${position}`;
+      const dayPart = details?.dayPart ?? "morning";
       const nextCompleted = existing
         ? todayRecord.completedSets.filter((entry) => entry.position !== position)
-        : [...todayRecord.completedSets, createLocalSetEntry(today, position, durationSeconds)];
+        : [...todayRecord.completedSets, createLocalSetEntry(today, position, durationSeconds, setName, dayPart)];
       const nextToday = {
         ...todayRecord,
         completedSets: nextCompleted.sort((a, b) => a.position - b.position)
@@ -303,6 +309,8 @@ export function useThumbTrack() {
             user_id: userId,
             log_date: today,
             position,
+            set_name: setName,
+            day_part: dayPart,
             duration_seconds: durationSeconds
           });
 
@@ -315,7 +323,7 @@ export function useThumbTrack() {
   );
 
   const completeNextSet = useCallback(
-    async (durationSeconds: number) => {
+    async (durationSeconds: number, details?: SetDetails) => {
       const nextPosition =
         Array.from({ length: todayRecord.targetSets }, (_, index) => index + 1).find(
           (position) => !todayRecord.completedSets.some((entry) => entry.position === position)
@@ -325,7 +333,7 @@ export function useThumbTrack() {
         return;
       }
 
-      await toggleSet(nextPosition, durationSeconds);
+      await toggleSet(nextPosition, durationSeconds, details);
     },
     [todayRecord, toggleSet]
   );

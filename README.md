@@ -1,6 +1,6 @@
 # ThumbTrack
 
-ThumbTrack is a mobile-first Next.js app for tracking daily thumb-pulling sets. It includes a daily dashboard, set timer, configurable daily target, checklist, calendar history, day notes, and basic streak/completion stats.
+ThumbTrack is a mobile-first Next.js app for tracking daily thumb-pulling sets. It includes a daily dashboard, set timer, configurable daily target, named sets, morning/midday/night grouping, checklist, calendar history, day notes, and basic streak/completion stats.
 
 ## Tech Stack
 

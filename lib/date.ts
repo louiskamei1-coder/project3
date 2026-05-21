@@ -1,5 +1,7 @@
 import type { DayRecord, IsoDate } from "@/lib/types";
 
+export const MAX_DAILY_SETS = 48;
+
 export function toIsoDate(date: Date): IsoDate {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -86,7 +88,7 @@ export function getStreak(records: DayRecord[]): number {
 }
 
 export function clampGoal(value: number): number {
-  return Math.max(1, Math.min(12, Math.round(value)));
+  return Math.max(1, Math.min(MAX_DAILY_SETS, Math.round(value)));
 }
 
 export function clampDuration(value: number): number {

@@ -1,4 +1,5 @@
 export type IsoDate = string;
+export type DayPart = "morning" | "midday" | "night";
 
 export type HabitProfile = {
   user_id: string;
@@ -23,6 +24,8 @@ export type SetEntry = {
   user_id: string;
   log_date: IsoDate;
   position: number;
+  set_name: string;
+  day_part: DayPart;
   duration_seconds: number;
   completed_at: string;
   created_at: string;
@@ -88,11 +91,15 @@ export type Database = {
           user_id: string;
           log_date: IsoDate;
           position: number;
+          set_name?: string;
+          day_part?: DayPart;
           duration_seconds: number;
           completed_at?: string;
           created_at?: string;
         };
         Update: {
+          set_name?: string;
+          day_part?: DayPart;
           duration_seconds?: number;
           completed_at?: string;
         };

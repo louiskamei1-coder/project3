@@ -24,13 +24,27 @@ import type { CSSProperties, ReactNode } from "react";
 import {
   formatFriendlyDate,
   getMonthDays,
+  MAX_DAILY_SETS,
   monthKey,
   monthLabel,
   parseIsoDate,
   toIsoDate
 } from "@/lib/date";
 import { useThumbTrack } from "@/lib/use-thumbtrack";
-import type { DayRecord, IsoDate, Stats, SyncState } from "@/lib/types";
+import type { DayPart, DayRecord, IsoDate, SetEntry, Stats, SyncState } from "@/lib/types";
+
+const dayPartLabels: Record<DayPart, string> = {
+  morning: "Morning",
+  midday: "Midday",
+  night: "Night"
+};
+
+const dayParts = Object.keys(dayPartLabels) as DayPart[];
+
+type SetDetails = {
+  name: string;
+  dayPart: DayPart;
+};
 
 function IconButton({
   label,
@@ -127,7 +141,7 @@ function GoalSettings({
             id="daily-goal"
             inputMode="numeric"
             min={1}
-            max={12}
+            max={MAX_DAILY_SETS}
             type="number"
             value={goal}
             onChange={(event) => onGoalChange(Number(event.target.value))}
@@ -137,13 +151,14 @@ function GoalSettings({
             className="action-button add"
             type="button"
             onClick={() => onGoalChange(goal + 1)}
-            disabled={goal >= 12}
+            disabled={goal >= MAX_DAILY_SETS}
           >
             <Plus size={18} />
             <span>Add</span>
           </button>
         </div>
       </div>
+      <p className="setting-hint">Up to {MAX_DAILY_SETS} sets per day.</p>
       <div className="setting-row">
         <div className="setting-label-line">
           <label htmlFor="set-duration">Timer length</label>
@@ -182,6 +197,50 @@ function GoalSettings({
             value={duration}
             onChange={(event) => onDurationChange(Number(event.target.value))}
           />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SetDetailsPanel({
+  value,
+  onChange
+}: {
+  value: SetDetails;
+  onChange: (value: SetDetails) => void;
+}) {
+  return (
+    <section className="panel set-details-panel" aria-label="Next set details">
+      <div className="panel-title">
+        <ClipboardCheck size={18} />
+        <h2>Next Set</h2>
+      </div>
+      <div className="setting-row">
+        <label htmlFor="set-name">Name</label>
+        <input
+          className="text-input"
+          id="set-name"
+          maxLength={64}
+          placeholder="Warmup, left hand, final pull..."
+          type="text"
+          value={value.name}
+          onChange={(event) => onChange({ ...value, name: event.target.value })}
+        />
+      </div>
+      <div className="setting-row">
+        <span className="notes-label">Time</span>
+        <div className="daypart-row" aria-label="Set time of day">
+          {dayParts.map((part) => (
+            <button
+              className={`daypart-button ${value.dayPart === part ? "active" : ""}`}
+              key={part}
+              type="button"
+              onClick={() => onChange({ ...value, dayPart: part })}
+            >
+              {dayPartLabels[part]}
+            </button>
+          ))}
         </div>
       </div>
     </section>
@@ -260,7 +319,26 @@ function SetTimer({
   );
 }
 
-function SetChecklist({ day, onToggle }: { day: DayRecord; onToggle: (position: number) => void }) {
+function TimeOverview({ entries }: { entries: SetEntry[] }) {
+  return (
+    <div className="time-overview" aria-label="Completed sets by time of day">
+      {dayParts.map((part) => (
+        <span key={part}>
+          <strong>{entries.filter((entry) => entry.day_part === part).length}</strong>
+          {dayPartLabels[part]}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function SetChecklist({
+  day,
+  onToggle
+}: {
+  day: DayRecord;
+  onToggle: (position: number) => void;
+}) {
   const positions = Array.from({ length: day.targetSets }, (_, index) => index + 1);
   const completed = day.completedSets.length;
 
@@ -273,9 +351,11 @@ function SetChecklist({ day, onToggle }: { day: DayRecord; onToggle: (position: 
         </div>
         <span className="panel-meta">{completed}/{day.targetSets}</span>
       </div>
+      <TimeOverview entries={day.completedSets} />
       <div className="set-list">
         {positions.map((position) => {
-          const checked = day.completedSets.some((entry) => entry.position === position);
+          const entry = day.completedSets.find((completedSet) => completedSet.position === position);
+          const checked = Boolean(entry);
           return (
             <button
               className={`set-check ${checked ? "done" : ""}`}
@@ -286,8 +366,8 @@ function SetChecklist({ day, onToggle }: { day: DayRecord; onToggle: (position: 
             >
               <span className="checkmark">{checked ? <Check size={16} /> : position}</span>
               <span className="set-copy">
-                <strong>Set {position}</strong>
-                <small>{checked ? "Complete" : "Open"}</small>
+                <strong>{entry?.set_name || `Set ${position}`}</strong>
+                <small>{checked && entry ? `${dayPartLabels[entry.day_part]} complete` : "Open"}</small>
               </span>
               {checked ? <Trash2 className="set-remove-icon" size={16} aria-hidden="true" /> : null}
             </button>
@@ -312,10 +392,19 @@ function Dashboard({
   stats: Stats;
   onGoalChange: (value: number) => void;
   onDurationChange: (value: number) => void;
-  onToggleSet: (position: number) => void;
-  onCompleteSet: (durationSeconds: number) => Promise<void>;
+  onToggleSet: (position: number, details: SetDetails) => void;
+  onCompleteSet: (durationSeconds: number, details: SetDetails) => Promise<void>;
 }) {
+  const [nextSetDetails, setNextSetDetails] = useState<SetDetails>({ name: "", dayPart: "morning" });
   const percent = Math.min(100, Math.round((today.completedSets.length / Math.max(1, today.targetSets)) * 100));
+  const completeSet = async (durationSeconds: number) => {
+    await onCompleteSet(durationSeconds, nextSetDetails);
+    setNextSetDetails({ ...nextSetDetails, name: "" });
+  };
+  const toggleSet = (position: number) => {
+    onToggleSet(position, nextSetDetails);
+    setNextSetDetails({ ...nextSetDetails, name: "" });
+  };
 
   return (
     <div className="dashboard-stack">
@@ -344,10 +433,11 @@ function Dashboard({
           onGoalChange={onGoalChange}
           onDurationChange={onDurationChange}
         />
-        <SetTimer duration={profile.set_duration_seconds} onComplete={onCompleteSet} />
+        <SetDetailsPanel value={nextSetDetails} onChange={setNextSetDetails} />
+        <SetTimer duration={profile.set_duration_seconds} onComplete={completeSet} />
       </div>
 
-      <SetChecklist day={today} onToggle={onToggleSet} />
+      <SetChecklist day={today} onToggle={toggleSet} />
     </div>
   );
 }
@@ -436,17 +526,26 @@ function DayDetail({
         {day.completedSets.length === 0 ? (
           <p>No sets recorded.</p>
         ) : (
-          day.completedSets.map((entry) => (
-            <div className="completed-row" key={entry.id}>
-              <span>Set {entry.position}</span>
-              <time dateTime={entry.completed_at}>
-                {new Intl.DateTimeFormat("en", {
-                  hour: "numeric",
-                  minute: "2-digit"
-                }).format(new Date(entry.completed_at))}
-              </time>
-            </div>
-          ))
+          dayParts.map((part) => {
+            const entries = day.completedSets.filter((entry) => entry.day_part === part);
+
+            return entries.length > 0 ? (
+              <div className="daypart-group" key={part}>
+                <h3>{dayPartLabels[part]}</h3>
+                {entries.map((entry) => (
+                  <div className="completed-row" key={entry.id}>
+                    <span>{entry.set_name || `Set ${entry.position}`}</span>
+                    <time dateTime={entry.completed_at}>
+                      {new Intl.DateTimeFormat("en", {
+                        hour: "numeric",
+                        minute: "2-digit"
+                      }).format(new Date(entry.completed_at))}
+                    </time>
+                  </div>
+                ))}
+              </div>
+            ) : null;
+          })
         )}
       </div>
       <label className="notes-label" htmlFor="day-notes">Notes</label>
@@ -499,7 +598,7 @@ export function ThumbTrackApp() {
           stats={thumbTrack.stats}
           onGoalChange={thumbTrack.updateGoal}
           onDurationChange={thumbTrack.updateDuration}
-          onToggleSet={(position) => void thumbTrack.toggleSet(position)}
+          onToggleSet={(position, details) => void thumbTrack.toggleSet(position, undefined, details)}
           onCompleteSet={thumbTrack.completeNextSet}
         />
       ) : (

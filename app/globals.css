@@ -395,6 +395,7 @@ button {
 .plan-actions,
 .duration-control,
 .preset-row,
+.daypart-row,
 .timer-actions,
 .calendar-heading,
 .calendar-nav {
@@ -422,6 +423,12 @@ button {
   width: 100%;
 }
 
+.setting-hint {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
 .preset-row {
   flex-wrap: wrap;
   gap: 8px;
@@ -442,6 +449,38 @@ button {
   border-color: #b7d8cc;
   background: var(--green-soft);
   color: var(--green);
+}
+
+.text-input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0 12px;
+}
+
+.daypart-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.daypart-button {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fbfaf6;
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 850;
+}
+
+.daypart-button.active {
+  border-color: #c9d9ef;
+  background: var(--blue-soft);
+  color: var(--blue);
 }
 
 .duration-control input {
@@ -528,6 +567,31 @@ button {
 .timer-actions {
   justify-content: center;
   flex-wrap: wrap;
+}
+
+.time-overview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.time-overview span {
+  display: grid;
+  min-height: 48px;
+  align-content: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fbfaf6;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 8px;
+}
+
+.time-overview strong {
+  color: var(--ink);
+  font-size: 1.05rem;
 }
 
 .set-list {
@@ -680,9 +744,20 @@ button {
 
 .completed-list {
   display: grid;
-  gap: 8px;
+  gap: 12px;
   min-height: 44px;
   margin-bottom: 16px;
+}
+
+.daypart-group {
+  display: grid;
+  gap: 8px;
+}
+
+.daypart-group h3 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
 }
 
 .completed-row {
@@ -734,14 +809,12 @@ button:focus-visible {
     padding: 24px;
   }
 
-  .stats-grid,
-  .dashboard-grid {
+  .stats-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .dashboard-grid .settings-panel,
-  .dashboard-grid .timer-panel {
-    grid-column: span 2;
+  .dashboard-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .set-list {
@@ -756,6 +829,10 @@ button:focus-visible {
 
   .calendar-view-grid {
     grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.9fr);
+  }
+
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1fr) minmax(0, 1.05fr);
   }
 
   .today-hero {
