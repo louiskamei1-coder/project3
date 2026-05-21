@@ -1,0 +1,29 @@
+{
+  "name": "thumbtrack",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A responsive habit-tracking app for daily thumb-pulling sets.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.106.1",
+    "lucide-react": "1.16.0",
+    "next": "16.2.6",
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
+  },
+  "devDependencies": {
+    "@next/swc-wasm-nodejs": "^16.2.6",
+    "@types/node": "25.9.1",
+    "@types/react": "19.2.15",
+    "@types/react-dom": "19.2.3",
+    "eslint": "10.4.0",
+    "eslint-config-next": "16.2.6",
+    "typescript": "5.9.3"
+  }
+}
